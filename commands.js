@@ -81,7 +81,8 @@ async function preparePDF() {
     layout.orientation = Excel.PageOrientation.portrait;
     layout.paperSize = Excel.PaperType.letter;
     layout.centerHorizontally = true; layout.centerVertically = false;
-    layout.zoom = { horizontalFitToPages: 1 };
+    // Percentage scaling preserves manual page breaks; fit-to-page does not.
+    layout.zoom = { scale: 60 };
     layout.topMargin = 54; layout.bottomMargin = 54; layout.leftMargin = 54; layout.rightMargin = 54;
     layout.printGridlines = false;
     await context.sync();
