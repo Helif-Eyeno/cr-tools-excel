@@ -4,9 +4,11 @@ const statusBox = document.getElementById("status");
 const setStatus = text => { statusBox.textContent = text; };
 const buttons = Array.from(document.querySelectorAll("button"));
 buttons.forEach(b => b.disabled = true);
-function bind(id, operation) { document.getElementById(id).onclick = async () => { buttons.forEach(b => b.disabled = true); try { setStatus("Working…"); setStatus(await operation()); } catch (e) { setStatus(`Could not complete the action: ${e.message || e}`); } finally { buttons.forEach(b => b.disabled = false); } }; }
+const operations = {};
+function bind(id, operation) { operations[id] = operation; document.getElementById(id).onclick = async () => { buttons.forEach(b => b.disabled = true); try { setStatus("Working…"); setStatus(await operation()); } catch (e) { setStatus(`Could not complete the action: ${e.message || e}`); } finally { buttons.forEach(b => b.disabled = false); } }; }
+function showResult(message) { const url = new URL('result.html', location.href); url.searchParams.set('message', message); Office.context.ui.displayDialogAsync(url.href, {height: 30, width: 35}, () => {}); }
 function numbers(items) { return items.map(s => ({ sheet:s, match:/^CR#(\d+)$/.exec(s.name) })).filter(x => x.match).map(x => ({sheet:x.sheet, number:Number(x.match[1])})).filter(x => Number.isSafeInteger(x.number)); }
-Office.onReady(info => {
+const ready = Office.onReady(info => {
  if (info.host !== Office.HostType.Excel) { setStatus("Open this add-in in Excel."); return; }
  bind("log", () => Excel.run(async ctx => { const sheet=ctx.workbook.worksheets.getItemOrNullObject("Log"); await ctx.sync(); if(sheet.isNullObject) throw Error("The Log sheet was not found."); sheet.activate(); await ctx.sync(); return "Opened Log."; }));
  bind("last", () => Excel.run(async ctx => { const sheets=ctx.workbook.worksheets; sheets.load("items/name"); await ctx.sync(); const found=numbers(sheets.items).sort((a,b)=>b.number-a.number); if(!found.length) throw Error("No CR tabs found."); found[0].sheet.activate(); await ctx.sync(); return `Opened ${found[0].sheet.name}.`; }));
@@ -14,4 +16,5 @@ Office.onReady(info => {
  bind("pdf", () => Excel.run(async ctx => { const sheet=ctx.workbook.worksheets.getActiveWorksheet(); sheet.load("name"); const number=sheet.getRange("AI68"), title=sheet.getRange("G73"); number.load("text"); title.load("text"); const layout=sheet.pageLayout; layout.setPrintArea("B1:AM131"); layout.orientation=Excel.PageOrientation.portrait; layout.paperSize=Excel.PaperType.letter; layout.centerHorizontally=true; layout.centerVertically=false; layout.zoom={horizontalFitToPages:1}; layout.topMargin=54; layout.bottomMargin=54; layout.leftMargin=54; layout.rightMargin=54; layout.printGridlines=false; await ctx.sync(); return `Print settings prepared for B1:AM131. Use Excel's active-sheet PDF export and verify the output. Suggested name: ${number.text[0][0]} ${title.text[0][0]} - ${sheet.name}.pdf`; }));
  buttons.forEach(b => b.disabled = false); setStatus("Ready. Use a test copy of the workbook.");
 });
+for (const id of ['create', 'log', 'last', 'pdf']) Office.actions.associate(`command_${id}`, async event => { try { await ready; const result = await operations[id](); if (id === 'pdf') showResult(result); } catch (error) { showResult(`Could not complete the action: ${error.message || error}`); } finally { event.completed(); } });
 
