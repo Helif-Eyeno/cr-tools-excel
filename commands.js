@@ -107,5 +107,5 @@ function command(operation, showSuccess) {
 Office.actions.associate("command_create", command(createCR, false));
 Office.actions.associate("command_log", command(openLog, false));
 Office.actions.associate("command_last", command(lastCR, false));
-Office.actions.associate("command_pdf", command(preparePDF, true));
+Office.actions.associate("command_pdf", command(preparePDF, false));
 
