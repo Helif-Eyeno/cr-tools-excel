@@ -70,6 +70,12 @@ async function preparePDF() {
     sheet.load("name");
     const number = sheet.getRange("AI68"), title = sheet.getRange("G73");
     number.load("text"); title.load("text");
+    const breaks = sheet.horizontalPageBreaks;
+    breaks.load("items/rowIndex");
+    await context.sync();
+    if (!breaks.items.some(pageBreak => pageBreak.rowIndex === 65)) {
+      breaks.add("B66");
+    }
     const layout = sheet.pageLayout;
     layout.setPrintArea("B1:AM131");
     layout.orientation = Excel.PageOrientation.portrait;
